@@ -185,7 +185,39 @@ if echo "$RESULT" | grep -q "REBOOT_REQUIRED"; then
     echo "  SSH: ssh -i /root/oopuo_vault/oopuo_key adminuser@${BRAIN_IP}"
     echo ""
     
-elif [ $EXIT_CODE -eq 0 ]; then
+elif echo "$RESULT" | grep -q "DEPLOYMENT COMPLETE"; then
+    echo ""
+    echo -e "\033[38;5;46m╔═══════════════════════════════════════════════════════════╗\033[0m"
+    echo -e "\033[38;5;46m║                                                           ║\033[0m"
+    echo -e "\033[38;5;46m║              ✓ INSTALLATION COMPLETE!                     ║\033[0m"
+    echo -e "\033[38;5;46m║                                                           ║\033[0m"
+    echo -e "\033[38;5;46m╚═══════════════════════════════════════════════════════════╝\033[0m"
+    echo ""
+    
+    # Get Brain IP
+    BRAIN_IP=$(cat /etc/oopuo/config.json 2>/dev/null | grep brain_ip | cut -d'"' -f4)
+    
+    echo -e "\033[38;5;51mAccess your OOPUO services:\033[0m"
+    echo ""
+    echo -e "  🚀 Nomad UI:  \033[38;5;198mhttp://${BRAIN_IP}:4646\033[0m"
+    echo -e "  🔍 Consul UI: \033[38;5;198mhttp://${BRAIN_IP}:8500\033[0m"
+    echo -e "  🔐 Vault UI:  \033[38;5;198mhttp://${BRAIN_IP}:8200\033[0m"
+    echo ""
+    
+    # Check if GPU failed
+    if echo "$RESULT" | grep -q "VM GPU drivers: FAILED"; then
+        echo -e "\033[38;5;214m⚠  Note: GPU driver installation failed (optional)\033[0m"
+        echo "  System is fully functional for CPU workloads"
+        echo "  GPU can be configured manually later if needed"
+        echo ""
+    fi
+    
+    echo -e "\033[38;5;51mNext steps:\033[0m"
+    echo "  1. Deploy n8n: bash /opt/oopuo/examples/deploy_n8n.sh"
+    echo "  2. Setup Cloudflare Tunnel for external access"
+    echo ""
+    echo -e "\033[38;5;240m  SSH: ssh -i /root/oopuo_vault/oopuo_key adminuser@${BRAIN_IP}\033[0m"
+    echo ""
     echo ""
     echo -e "\033[38;5;46m╔═══════════════════════════════════════════════════════════╗\033[0m"
     echo -e "\033[38;5;46m║                                                           ║\033[0m"

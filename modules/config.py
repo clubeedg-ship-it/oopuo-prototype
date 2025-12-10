@@ -46,7 +46,7 @@ DEFAULT_CONFIG = {
     "credentials": {
         "user": "adminuser",
         "pass": "Oopuopu123!",
-        "key_path": f"{VAULT_DIR}/id_ed25519_vm200"
+        "key_path": f"{VAULT_DIR}/oopuo_key"
     },
     "assets": {
         "cloud_img_url": "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img",
