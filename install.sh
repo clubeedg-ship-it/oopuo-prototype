@@ -243,30 +243,6 @@ elif echo "$RESULT" | grep -q "DEPLOYMENT COMPLETE"; then
     echo ""
     echo -e "\033[38;5;240m  📡 SSH: ssh -i /root/oopuo_vault/oopuo_key adminuser@${BRAIN_IP}\033[0m"
     echo ""
-    echo ""
-    echo -e "\033[38;5;46m╔═══════════════════════════════════════════════════════════╗\033[0m"
-    echo -e "\033[38;5;46m║                                                           ║\033[0m"
-    echo -e "\033[38;5;46m║              ✓ INSTALLATION COMPLETE!                     ║\033[0m"
-    echo -e "\033[38;5;46m║                                                           ║\033[0m"
-    echo -e "\033[38;5;46m╚═══════════════════════════════════════════════════════════╝\033[0m"
-    echo ""
-    
-    # Get Brain IP
-    BRAIN_IP=$(cat /etc/oopuo/config.json 2>/dev/null | grep brain_ip | cut -d'"' -f4)
-    
-    echo -e "\033[38;5;51mAccess your OOPUO services:\033[0m"
-    echo ""
-    echo -e "  🚀 Nomad UI:  \033[38;5;198mhttp://${BRAIN_IP}:4646\033[0m"
-    echo -e "  🔍 Consul UI: \033[38;5;198mhttp://${BRAIN_IP}:8500\033[0m"
-    echo -e "  🔐 Vault UI:  \033[38;5;198mhttp://${BRAIN_IP}:8200\033[0m"
-    echo ""
-    echo -e "\033[38;5;51mNext steps:\033[0m"
-    echo "  1. Configure Cloudflare Tunnel: Run OOPUO TUI"
-    echo "  2. Deploy n8n: See /opt/oopuo/examples/deploy_n8n.sh"
-    echo ""
-    echo -e "\033[38;5;240m  SSH: ssh adminuser@${BRAIN_IP}\033[0m"
-    echo -e "\033[38;5;240m  Password: Oopuopu123!\033[0m"
-    echo ""
 else
     echo "✗ Installation failed - check logs at /var/log/oopuo/system.log"
     exit 1
