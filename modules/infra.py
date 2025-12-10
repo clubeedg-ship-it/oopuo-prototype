@@ -502,7 +502,7 @@ if __name__ == "__main__":
         print("  Run: sudo reboot")
         print("  Then re-run this script")
     elif success:
-        print("✓ OOPUO v9 infrastructure deployed successfully")
+        print("OOPUO v9 DEPLOYMENT COMPLETE")
     else:
         print("✗ Deployment failed (see logs)")
-
+```

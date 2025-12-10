@@ -291,16 +291,14 @@ for i in {1..5}; do
     sleep 5
 done
 
-# Install NVIDIA drivers
+# Install NVIDIA drivers (auto-detect best version)
 echo "Installing NVIDIA drivers (this may take several minutes)..."
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-535 nvidia-utils-535
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ubuntu-drivers-common
+sudo ubuntu-drivers install --gpgpu
 
-# Install CUDA Toolkit 12.4
-echo "Installing CUDA Toolkit..."
-wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
-sudo dpkg -i cuda-keyring_1.1-1_all.deb
-sudo apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cuda-toolkit-12-4 cuda-drivers-535
+# Verify driver installation
+echo "Verifying NVIDIA driver installation..."
+nvidia-smi || true
 
 # Install NVIDIA Container Toolkit
 echo "Installing NVIDIA Container Toolkit..."
