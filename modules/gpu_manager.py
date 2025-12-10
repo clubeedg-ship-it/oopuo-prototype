@@ -310,38 +310,35 @@ sudo systemctl restart docker
 echo "Verifying GPU installation..."
 nvidia-smi
 
-echo "✓ GPU installation complete!"
-"""
+# Update Nomad config to enable GPU
+sudo tee -a /etc/nomad.d/nomad.hcl > /dev/null <<'NOMADEOF'
 
-                # Update Nomad config to enable GPU
-                sudo tee -a /etc/nomad.d/nomad.hcl > /dev/null <<'EOF'
-
-plugin "docker" {{
-  config {{
+plugin "docker" {
+  config {
     allow_privileged = true
     
     extra_labels = ["job_name", "task_group_name", "task_name"]
     
-    gc {{
+    gc {
       image = true
-    }}
+    }
     
-    volumes {{
+    volumes {
       enabled = true
-    }}
-  }}
-}}
+    }
+  }
+}
 
-client {{
-  meta {{
+client {
+  meta {
     "gpu_enabled" = "true"
-  }}
-}}
-EOF
+  }
+}
+NOMADEOF
 
 sudo systemctl restart nomad
 
-echo "GPU installation complete!"
+echo "✓ GPU installation complete!"
 """
             
             elif vendor == 'amd':
