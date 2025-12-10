@@ -49,56 +49,66 @@ if [ $CLEANUP_NEEDED -eq 1 ]; then
     echo ""
     echo "⚠  Previous OOPUO installation detected"
     echo ""
-    read -p "Remove existing installation and do fresh install? (y/n): " confirm
     
-    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        echo ""
-        echo "Cleaning up previous installation..."
+    # Check if we can read from terminal (not piped)
+    if [ -t 0 ]; then
+        # Running interactively - can prompt user
+        read -p "Remove existing installation and do fresh install? (y/n): " confirm
         
-        # Stop and remove Brain VM
-        if qm status 200 &>/dev/null; then
-            echo "  Stopping Brain VM..."
-            qm stop 200 &>/dev/null || true
-            sleep 2
-            echo "  Removing Brain VM..."
-            qm destroy 200 --purge &>/dev/null || true
+        if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+            echo ""
+            echo "Installation aborted. Run with existing installation or clean up manually."
+            exit 1
         fi
-        
-        # Stop and remove Guard CT
-        if pct status 100 &>/dev/null; then
-            echo "  Stopping Guard CT..."
-            pct stop 100 &>/dev/null || true
-            sleep 2
-            echo "  Removing Guard CT..."
-            pct destroy 100 --purge &>/dev/null || true
-        fi
-        
-        # Remove directories
-        echo "  Removing directories..."
-        rm -rf /opt/oopuo
-        rm -rf /etc/oopuo
-        rm -rf /var/log/oopuo
-        rm -rf /root/oopuo_vault
-        
-        # Remove systemd service if exists
-        if [ -f "/etc/systemd/system/oopuo.service" ]; then
-            systemctl stop oopuo &>/dev/null || true
-            systemctl disable oopuo &>/dev/null || true
-            rm -f /etc/systemd/system/oopuo.service
-            systemctl daemon-reload
-        fi
-        
-        # Clean SSH known_hosts
-        ssh-keygen -f '/root/.ssh/known_hosts' -R '192.168.0.222' &>/dev/null || true
-        ssh-keygen -f '/root/.ssh/known_hosts' -R '192.168.0.250' &>/dev/null || true
-        
-        echo "  ✓ Cleanup complete"
-        echo ""
     else
-        echo ""
-        echo "Installation aborted. Please remove existing installation manually or choose 'y' to auto-remove."
-        exit 1
+        # Running via pipe (curl | bash) - auto-cleanup
+        echo "Running via pipe - will auto-cleanup and reinstall"
+        echo "To abort, press Ctrl+C in the next 5 seconds..."
+        sleep 5
     fi
+    
+    echo ""
+    echo "Cleaning up previous installation..."
+    
+    # Stop and remove Brain VM
+    if qm status 200 &>/dev/null; then
+        echo "  Stopping Brain VM..."
+        qm stop 200 &>/dev/null || true
+        sleep 2
+        echo "  Removing Brain VM..."
+        qm destroy 200 --purge &>/dev/null || true
+    fi
+    
+    # Stop and remove Guard CT
+    if pct status 100 &>/dev/null; then
+        echo "  Stopping Guard CT..."
+        pct stop 100 &>/dev/null || true
+        sleep 2
+        echo "  Removing Guard CT..."
+        pct destroy 100 --purge &>/dev/null || true
+    fi
+    
+    # Remove directories
+    echo "  Removing directories..."
+    rm -rf /opt/oopuo
+    rm -rf /etc/oopuo
+    rm -rf /var/log/oopuo
+    rm -rf /root/oopuo_vault
+    
+    # Remove systemd service if exists
+    if [ -f "/etc/systemd/system/oopuo.service" ]; then
+        systemctl stop oopuo &>/dev/null || true
+        systemctl disable oopuo &>/dev/null || true
+        rm -f /etc/systemd/system/oopuo.service
+        systemctl daemon-reload
+    fi
+    
+    # Clean SSH known_hosts
+    ssh-keygen -f '/root/.ssh/known_hosts' -R '192.168.0.222' &>/dev/null || true
+    ssh-keygen -f '/root/.ssh/known_hosts' -R '192.168.0.250' &>/dev/null || true
+    
+    echo "  ✓ Cleanup complete"
+    echo ""
 fi
 
 echo "[1/4] Downloading OOPUO v9..."
