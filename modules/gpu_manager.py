@@ -235,34 +235,82 @@ blacklist amdgpu
         
         try:
             if vendor == 'nvidia':
-                script = """
-                # Wait for system to stabilize
-                sleep 5
-                
-                # Auto-detect and install NVIDIA drivers
-                sudo apt-get update
-                sudo ubuntu-drivers devices
-                sudo ubuntu-drivers autoinstall
-                
-                # CUDA Toolkit 12.4
-                wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
-                sudo dpkg -i cuda-keyring_1.1-1_all.deb
-                sudo apt-get update
-                sudo apt-get install -y cuda-toolkit-12-4 cuda-drivers
-                
-                # NVIDIA Container Toolkit (for Docker)
-                distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-                curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-                curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | \
-                    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-                    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-                sudo apt-get update
-                sudo apt-get install -y nvidia-container-toolkit
-                sudo nvidia-ctk runtime configure --runtime=docker
-                
-                # Verify installation
-                nvidia-smi
-                """
+                script = """#!/bin/bash
+set -e
+
+echo "Starting GPU driver installation..."
+
+# Wait for apt locks to be released (cloud-init, unattended-upgrades, etc.)
+echo "Waiting for package manager locks..."
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \\
+      fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \\
+      fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+    echo "  Waiting for other package managers to finish..."
+    sleep 5
+done
+
+# Update package lists
+sudo apt-get update
+
+# Install NVIDIA drivers
+echo "Installing NVIDIA drivers..."
+sudo apt-get install -y nvidia-driver-535 nvidia-utils-535
+
+# Install CUDA Toolkit 12.4
+echo "Installing CUDA Toolkit..."
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt-get update
+sudo apt-get install -y cuda-toolkit-12-4 cuda-drivers-535
+
+# Install NVIDIA Container Toolkit (correct repository for Ubuntu 24.04)
+echo "Installing NVIDIA Container Toolkit..."
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \\
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \\
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Configure Docker to use NVIDIA runtime
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+
+# Verify installation
+echo "Verifying GPU installation..."
+nvidia-smi
+
+# Update Nomad config to enable GPU
+sudo tee -a /etc/nomad.d/nomad.hcl > /dev/null <<'EOF'
+
+plugin "docker" {{
+  config {{
+    allow_privileged = true
+    
+    extra_labels = ["job_name", "task_group_name", "task_name"]
+    
+    gc {{
+      image = true
+    }}
+    
+    volumes {{
+      enabled = true
+    }}
+  }}
+}}
+
+client {{
+  meta {{
+    "gpu_enabled" = "true"
+  }}
+}}
+EOF
+
+sudo systemctl restart nomad
+
+echo "GPU installation complete!"
+"""
             
             elif vendor == 'amd':
                 script = """
