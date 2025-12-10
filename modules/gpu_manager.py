@@ -240,30 +240,58 @@ set -e
 
 echo "Starting GPU driver installation..."
 
-# Wait for apt locks to be released (cloud-init, unattended-upgrades, etc.)
-echo "Waiting for package manager locks..."
-while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \\
-      fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \\
-      fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
-    echo "  Waiting for other package managers to finish..."
+# Function to wait for apt locks
+wait_for_apt() {
+    echo "Waiting for package manager to become available..."
+    local max_attempts=60
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        # Check all lock files
+        if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 && \\
+           ! fuser /var/lib/apt/lists/lock >/dev/null 2>&1 && \\
+           ! fuser /var/cache/apt/archives/lock >/dev/null 2>&1 && \\
+           ! fuser /var/lib/dpkg/lock >/dev/null 2>&1; then
+            echo "Package manager is ready!"
+            return 0
+        fi
+        
+        attempt=$((attempt + 1))
+        echo "  Waiting... ($attempt/$max_attempts) - checking for locks"
+        sleep 10
+    done
+    
+    # If still locked after max attempts, kill unattended-upgrade
+    echo "WARNING: Forcing package manager unlock..."
+    sudo killall -9 apt-get apt dpkg unattended-upgrade 2>/dev/null || true
+    sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null || true
+    sudo dpkg --configure -a
     sleep 5
-done
+}
+
+# Wait for locks to clear
+wait_for_apt
+
+# Disable unattended-upgrades during installation
+sudo systemctl stop unattended-upgrades 2>/dev/null || true
+sudo systemctl disable unattended-upgrades 2>/dev/null || true
 
 # Update package lists
+echo "Updating package lists..."
 sudo apt-get update
 
 # Install NVIDIA drivers
-echo "Installing NVIDIA drivers..."
-sudo apt-get install -y nvidia-driver-535 nvidia-utils-535
+echo "Installing NVIDIA drivers (this may take several minutes)..."
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-535 nvidia-utils-535
 
 # Install CUDA Toolkit 12.4
 echo "Installing CUDA Toolkit..."
-wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
 sudo dpkg -i cuda-keyring_1.1-1_all.deb
 sudo apt-get update
-sudo apt-get install -y cuda-toolkit-12-4 cuda-drivers-535
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cuda-toolkit-12-4 cuda-drivers-535
 
-# Install NVIDIA Container Toolkit (correct repository for Ubuntu 24.04)
+# Install NVIDIA Container Toolkit
 echo "Installing NVIDIA Container Toolkit..."
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \\
@@ -271,9 +299,10 @@ curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-contai
     sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-container-toolkit
 
 # Configure Docker to use NVIDIA runtime
+echo "Configuring Docker for GPU support..."
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 
@@ -281,8 +310,11 @@ sudo systemctl restart docker
 echo "Verifying GPU installation..."
 nvidia-smi
 
-# Update Nomad config to enable GPU
-sudo tee -a /etc/nomad.d/nomad.hcl > /dev/null <<'EOF'
+echo "✓ GPU installation complete!"
+"""
+
+                # Update Nomad config to enable GPU
+                sudo tee -a /etc/nomad.d/nomad.hcl > /dev/null <<'EOF'
 
 plugin "docker" {{
   config {{
