@@ -139,8 +139,11 @@ mkdir -p /root/oopuo_vault
 echo "[3/4] Running infrastructure deployment..."
 echo "  This may take 15-20 minutes..."
 
+# Clear any existing install log
+rm -f /var/log/oopuo/install.log
+
 # Run the deployment with timeout to prevent hanging
-timeout 1800 python3 -u /opt/oopuo/infra.py 2>&1 | tee -a /var/log/oopuo/install.log
+timeout 1800 python3 -u /opt/oopuo/infra.py 2>&1 | tee /var/log/oopuo/install.log
 EXIT_CODE=${PIPESTATUS[0]}
 
 # Check if it timed out
@@ -152,7 +155,7 @@ if [ $EXIT_CODE -eq 124 ]; then
     exit 1
 fi
 
-# Capture the result
+# Read the result
 RESULT=$(cat /var/log/oopuo/install.log)
 
 # Check if it completed or needs reboot
