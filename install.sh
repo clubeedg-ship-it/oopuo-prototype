@@ -137,12 +137,23 @@ mkdir -p /etc/oopuo
 mkdir -p /root/oopuo_vault
 
 echo "[3/4] Running infrastructure deployment..."
+echo "  This may take 15-20 minutes..."
 
-# Run the deployment
-RESULT=$(python3 /opt/oopuo/infra.py 2>&1)
-EXIT_CODE=$?
+# Run the deployment with timeout to prevent hanging
+timeout 1800 python3 -u /opt/oopuo/infra.py 2>&1 | tee -a /var/log/oopuo/install.log
+EXIT_CODE=${PIPESTATUS[0]}
 
-echo "$RESULT"
+# Check if it timed out
+if [ $EXIT_CODE -eq 124 ]; then
+    echo ""
+    echo "✗ Installation timed out after 30 minutes"
+    echo "  Check logs: /var/log/oopuo/system.log"
+    echo "  Check install log: /var/log/oopuo/install.log"
+    exit 1
+fi
+
+# Capture the result
+RESULT=$(cat /var/log/oopuo/install.log)
 
 # Check if it completed or needs reboot
 if echo "$RESULT" | grep -q "REBOOT_REQUIRED"; then
