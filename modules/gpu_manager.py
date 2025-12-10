@@ -247,25 +247,30 @@ wait_for_apt() {
     local attempt=0
     
     while [ $attempt -lt $max_attempts ]; do
-        # Check all lock files
-        if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 && \\
-           ! fuser /var/lib/apt/lists/lock >/dev/null 2>&1 && \\
-           ! fuser /var/cache/apt/archives/lock >/dev/null 2>&1 && \\
-           ! fuser /var/lib/dpkg/lock >/dev/null 2>&1; then
-            echo "Package manager is ready!"
-            return 0
+        # Check if any apt/dpkg processes are running
+        if ! pgrep -x apt-get >/dev/null && \\
+           ! pgrep -x apt >/dev/null && \\
+           ! pgrep -x dpkg >/dev/null && \\
+           ! pgrep -x unattended-upgrade >/dev/null; then
+            
+            # Try to acquire the locks
+            if sudo apt-get check >/dev/null 2>&1; then
+                echo "Package manager is ready!"
+                return 0
+            fi
         fi
         
         attempt=$((attempt + 1))
-        echo "  Waiting... ($attempt/$max_attempts) - checking for locks"
+        echo "  Waiting... ($attempt/$max_attempts)"
         sleep 10
     done
     
-    # If still locked after max attempts, kill unattended-upgrade
+    # If still locked after max attempts, force cleanup
     echo "WARNING: Forcing package manager unlock..."
-    sudo killall -9 apt-get apt dpkg unattended-upgrade 2>/dev/null || true
+    sudo killall -9 apt-get apt dpkg unattended-upgra apt.systemd.daily 2>/dev/null || true
+    sleep 2
     sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock 2>/dev/null || true
-    sudo dpkg --configure -a
+    sudo dpkg --configure -a 2>/dev/null || true
     sleep 5
 }
 
@@ -276,9 +281,15 @@ wait_for_apt
 sudo systemctl stop unattended-upgrades 2>/dev/null || true
 sudo systemctl disable unattended-upgrades 2>/dev/null || true
 
-# Update package lists
+# Update package lists with retry
 echo "Updating package lists..."
-sudo apt-get update
+for i in {1..5}; do
+    if sudo apt-get update; then
+        break
+    fi
+    echo "  Retry $i/5..."
+    sleep 5
+done
 
 # Install NVIDIA drivers
 echo "Installing NVIDIA drivers (this may take several minutes)..."
