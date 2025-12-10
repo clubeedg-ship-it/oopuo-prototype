@@ -30,19 +30,13 @@ echo "[1/4] Downloading OOPUO v9..."
 TMPDIR=$(mktemp -d)
 cd $TMPDIR
 
-# Download from cloud (replace with your actual URL)
-# For now, we'll package everything into a tarball
-REPO_URL="https://github.com/YOUR_USERNAME/oopuo-prototype"  # UPDATE THIS
+# Download from GitHub (no authentication required for public repos)
+REPO_URL="https://github.com/clubeedg-ship-it/oopuo-prototype"
 
-# Option 1: If you have a GitHub repo
-if command -v git &> /dev/null; then
-    git clone --depth 1 $REPO_URL oopuo-v9
-    cd oopuo-v9
-else
-    # Option 2: Download as tarball
-    curl -fsSL ${REPO_URL}/archive/main.tar.gz | tar xz
-    cd oopuo-prototype-main
-fi
+# Download as tarball (avoids any git credential prompts)
+echo "  Downloading from ${REPO_URL}..."
+curl -fsSL ${REPO_URL}/archive/refs/heads/main.tar.gz | tar xz
+cd oopuo-prototype-main
 
 echo "[2/4] Installing OOPUO modules..."
 
