@@ -44,6 +44,11 @@ echo "[2/4] Installing OOPUO modules..."
 mkdir -p /opt/oopuo
 cp -r modules/* /opt/oopuo/
 
+# Create required directories
+mkdir -p /var/log/oopuo
+mkdir -p /etc/oopuo
+mkdir -p /root/oopuo_vault
+
 echo "[3/4] Running infrastructure deployment..."
 
 # Run the deployment
